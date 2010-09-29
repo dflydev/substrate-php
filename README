@@ -1,0 +1,6 @@
+Substrate IoC/DI Container for PHP
+http://substrate-php.org/
+
+
+Substrate is an IoC/DI Container for PHP. Substrate is inspired by Spring
+Framework, but written with the strengths and limitations of PHP in mind.
