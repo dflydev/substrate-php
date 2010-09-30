@@ -21,5 +21,5 @@ if ( $dirHandle = opendir($relativeVendors) ) {
 }
 
 if ( file_exists('bootstrap-site-post.php') ) require_once('bootstrap-site-post.php');
-print_r($classpath);
+
 ?>
