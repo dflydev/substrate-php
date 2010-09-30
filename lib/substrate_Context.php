@@ -276,6 +276,7 @@ class substrate_Context {
                     if ( $throwException ) {
                         throw new Exception('Could not find constructor argument named "' . $constructorArgumentName . '" for stone named "' . $name . '"');
                     }
+                    if ( ! $foundArgument ) $constructorArgs[] = null;
                 }
             }
 

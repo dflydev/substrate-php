@@ -1,12 +1,14 @@
 <?php
 
-if ( file_exists('bootstrap-site-pre.php') ) require_once('bootstrap-site-pre.php');
+$testRoot = dirname(__FILE__);
+$substratePackageRoot = dirname($testRoot);
 
-$substratePackageRoot = dirname(dirname(__FILE__));
+if ( file_exists($testRoot . '/bootstrap-site-pre.php') ) require_once($testRoot . '/bootstrap-site-pre.php');
 
-$classpath[] = $substratePackageRoot . '/configs';
+// Substrate package library location
 $classpath[] = $substratePackageRoot . '/lib';
 
+// Substrate package vendor library root
 $relativeVendors = $substratePackageRoot . '/vendors';
 
 if ( $dirHandle = opendir($relativeVendors) ) {
@@ -20,6 +22,6 @@ if ( $dirHandle = opendir($relativeVendors) ) {
     closedir($dirHandle);
 }
 
-if ( file_exists('bootstrap-site-post.php') ) require_once('bootstrap-site-post.php');
+if ( file_exists($testRoot . '/bootstrap-site-post.php') ) require_once($testRoot . '/bootstrap-site-post.php');
 
 ?>

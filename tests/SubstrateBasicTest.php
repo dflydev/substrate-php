@@ -43,6 +43,13 @@ class SubstrateBasicTest extends PHPUnit_Framework_TestCase {
         $people = $context->findStonesByImplementation('tests_Person');
         $this->assertEquals(2, count($people));
         
+        $bobAndBill = $context->get('bobAndBill');
+        $this->assertEquals('Bob', $bobAndBill->leader()->name());
+        $this->assertEquals('Bill', $bobAndBill->follower()->name());
+        
+        $people = $context->findStonesByImplementation('tests_Person');
+        $this->assertEquals(4, count($people));
+        
     }
 
 }

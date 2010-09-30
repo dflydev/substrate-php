@@ -1,8 +1,9 @@
 <?php
 
 $classpath = explode(PATH_SEPARATOR, get_include_path());
-$classpath[] = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'test-contexts';
 $classpath[] = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'test-libs';
+$classpath[] = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'test-contexts';
+$classpath[] = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'test-configs';
 require_once('bootstrap.php');
 set_include_path(implode(PATH_SEPARATOR, $classpath));
 
