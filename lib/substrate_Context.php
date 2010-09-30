@@ -569,10 +569,10 @@ class substrate_Context {
      * @param $name
      */
     protected function addInterfaceToMap($interfaceOrClass, $name) {
-        if ( ! isset($this->mapByInterface[$interfaceOrClass]) ) {
-            $this->mapByInterface[$interfaceOrClass] = array();
+        if ( ! isset($this->stoneDefinitionsByInterface[$interfaceOrClass]) ) {
+            $this->stoneDefinitionsByInterface[$interfaceOrClass] = array();
         }
-        $this->mapByInterface[$interfaceOrClass][] = $name;
+        $this->stoneDefinitionsByInterface[$interfaceOrClass][] = $name;
     }
     
     /**
@@ -651,6 +651,41 @@ class substrate_Context {
 
     }
     
+    /**
+     * Load references for a stone.
+     * @param $name
+     * @param $references
+     */
+    private function loadReferences($name, $references) {
+        $stone = $this->stoneInstances[$name];
+        foreach ( $references as $reference ) {
+            $methodName = $reference['methodName'];
+            $contextStoneReference = $reference['contextStoneReference'];
+            $referencedStone = $this->get($contextStoneReference->name());
+            if ( $methodName !== null ) {
+                $stone->$methodName($referencedStone);
+            }
+        }
+    }
+    
+    /**
+     * Find all stones by an implementation
+     * @param $classOrInterface
+     */
+    public function findStonesByImplementation($classOrInterface) {
+
+        if ( ! isset($this->stoneDefinitionsByInterface[$classOrInterface])) {
+            return array();
+        }
+        
+        $stones = array();
+        foreach ( $this->stoneDefinitionsByInterface[$classOrInterface] as $name ) {
+            $stones[] = $this->get($name);
+        }
+        return $stones;
+        
+    }
+        
     /**
      * @see substrate_Context::placeholderConfigurer()
      * @deprecated
