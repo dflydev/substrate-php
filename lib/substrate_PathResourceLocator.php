@@ -75,7 +75,6 @@ class substrate_PathResourceLocator implements substrate_IResourceLocator {
 
         foreach ( $this->allPaths() as $path ) {
             $testLocation = $path . '/' . $target;
-            print " [ $testLocation ]\n";
             // TODO This could possibly be cached eventually.
             if ( file_exists($testLocation) ) return $realPath ? realpath($testLocation) : $testLocation;
         }

@@ -7,6 +7,9 @@
 require_once('substrate_IResourceLocator.php');
 require_once('substrate_IClassLoader.php');
 require_once('substrate_ContextStoneReference.php');
+require_once('substrate_stones_IContextAware.php');
+require_once('substrate_stones_IContextStartupAware.php');
+require_once('substrate_stones_IFactoryStone.php');
 
 
 /**
@@ -82,6 +85,18 @@ class substrate_Context {
     protected $stoneDefinitionsByInterface = array();
     
     /**
+     * Cache of instantiated stones
+     * @var array
+     */
+    protected $stoneInstances = array();
+    
+    /**
+     * Cache of initialized stone names
+     * @var array
+     */
+    protected $initializedStones = array();
+    
+    /**
      * Context ID
      * @var int
      */
@@ -116,9 +131,6 @@ class substrate_Context {
             $this->classLoader = $classLoader;
         }
         $this->import($contextConfigNames);
-        $this->classLoader->load('Foo');
-        $this->classLoader->load('Bar');
-        $this->classLoader->load('FooBarBaz');
     }
     
     /**
@@ -172,7 +184,213 @@ class substrate_Context {
         }
         
     }
+    
+    /**
+     * Execute the Substrate context
+     */
+    public function execute() {
+        foreach ( $this->stoneDefinitions as $name => $setup ) {
+            $stoneDefinition = $this->prepareStone($name);
+            $this->stoneDefinitions[$name] = $stoneDefinition;
+            if ( ! $stoneDefinition['lazyLoad'] ) {
+                $this->instantiate($name);
+            }
+        }
+    }
+    
+    /**
+     * Check if stone has been defined
+     * @param $name
+     */
+    public function exists($name = null) {
+        return array_key_exists($name, $this->stoneDefinitions);
+    }
+    
+    /**
+     * Is a stone instantiated?
+     * @param $name
+     */
+    protected function instantiated($name = null) {
+        return array_key_exists($name, $this->stoneInstances);
+    }
+    
+    /**
+     * Is a stone initialized?
+     * Enter description here ...
+     * @param unknown_type $name
+     */
+    protected function initialized($name = null) {
+        return array_key_exists($name, $this->initializedStones);
+    }
+    
+    /**
+     * Instantiate a stone
+     * @param $name
+     * @throws Exception
+     */
+    protected function instantiate($name = null) {
 
+        if ( $name === null ) throw new Exception('Object name must be specified.');
+        if ( $this->instantiated($name)) { return $this->stoneInstances[$name]; }
+        
+        $setup = $this->stoneDefinition($name);
+        $className = $setup['className'];
+        $this->logDebug('Initializing stone named "' . $name . '" (' . $className . ')');
+        $this->loadDependantClasses($setup);
+
+        $reflectionClass = new ReflectionClass($className);
+
+        $constructor = $reflectionClass->getConstructor();
+        $constructorArgs = array();
+
+        $originalConstructorArgs = isset($setup['constructorArgs']) ?
+            $setup['constructorArgs'] : null;
+
+        if ( $constructor ) {
+
+            foreach ( $constructor->getParameters() as $reflectionParamter ) {
+
+                $constructorArgumentName = $reflectionParamter->getName();
+                if ( isset($setup['constructorArgs'][$constructorArgumentName]) ) {
+                    $constructorArgs[] = $setup['constructorArgs'][$constructorArgumentName];
+                    // We no longer want to remember this constructor argument.
+                    unset($originalConstructorArgs[$constructorArgumentName]);
+                } else {
+                    $throwException = true;
+                    $foundArgument = false;
+                    $paramClass = $reflectionParamter->getClass();
+                    if ( $paramClass ) {
+                        $paramClassName = $paramClass->getName();
+                        foreach ( $this->stoneInstances as $testStone ) {
+                            if ( $testStone instanceof $paramClassName ) {
+                                $throwException = false;
+                                $foundArgument = true;
+                                $constructorArgs[] = $testStone;
+                                break;
+                            }
+                        }
+                    }
+                    if ( ! $foundArgument and $reflectionParamter->allowsNull() ) {
+                        $throwException = false;
+                    }
+                    if ( $throwException ) {
+                        throw new Exception('Could not find constructor argument named "' . $constructorArgumentName . '" for stone named "' . $name . '"');
+                    }
+                }
+            }
+
+            if ( count($originalConstructorArgs) ) {
+                $constructorArgs = array_merge($constructorArgs, array_values($originalConstructorArgs));
+            }
+
+        }
+        
+        if ( sizeof($constructorArgs) ) {
+            for ( $i = 0; $i < count($constructorArgs); $i++ ) {
+                $constructorArgs[$i] =
+                    $this->resolvedConstructorArg($constructorArgs[$i]);
+            }
+            $newInstance = $reflectionClass->newInstanceArgs($constructorArgs);
+        } else {
+            $newInstance = $reflectionClass->newInstance();
+        }
+
+        $references = array();
+        foreach ( $setup['properties'] as $key => $value ) {
+            $methodName = 'set' . ucfirst($key);
+            if ( method_exists($newInstance, $methodName) ) {
+                if ( $value instanceof substrate_ContextStoneReference ) {
+                    $references[] = array(
+                        'methodName' => $methodName,
+                        'contextStoneReference' => $value,
+                    );
+                } else {
+                    $newInstance->$methodName($value);
+                }
+            }
+        }
+
+        foreach ( $setup['dependencies'] as $value ) {
+            $references[] = array(
+                'methodName' => null,
+                'contextStoneReference' => $value,
+            );
+        }
+
+        if ( $newInstance instanceof substrate_stones_IFactoryStone ) {
+            $newInstance = $newInstance->getStone();
+        }
+
+        $this->stoneInstances[$name] = $newInstance;
+
+        if ( count($references) ) {
+            // If there are references, we can try to load them now.
+            // We do this AFTER we have stored our stone reference
+            // so that we can avoid infinite loops for stones that
+            // have a dependency on each other.
+            $this->loadReferences($name, $references);
+        }
+
+        $this->addInterfacetoMap(get_class($newInstance), $name);
+
+        foreach ( class_implements($newInstance) as $implementedInterface ) {
+            $this->addInterfaceToMap($implementedInterface, $name);
+        }
+
+        foreach ( class_parents($newInstance) as $parentClass ) {
+            $this->addInterfaceToMap($parentClass, $name);
+        }
+        
+        return $newInstance;
+            
+            
+    }
+    
+    /**
+     * Get the object for the specified stone
+     * @param  $name
+     * @throws Exception
+     */
+    public function get($name= null) {
+        
+        if ( $name === null ) throw new Exception('Object name must be specified.');
+        if ( $this->initialized($name) ) return $this->stoneInstances[$name];
+        
+        $this->initializedStones[$name] = true;
+
+        $object = $this->instantiate($name);
+        
+        if ( $object instanceof substrate_IContextAware ) {
+            $object->informAboutContext($this);
+        }
+        
+        if ( $object instanceof substrate_IContextStartupAware ) {
+            $object->informAboutContextStartup($this);
+        }
+        
+        return $object;
+    }
+    
+    /**
+     * Get the definition for a stone by name
+     * @param $name
+     */
+    public function stoneDefinition($name) {
+        if ( ! $this->exists($name) ) {
+            throw new Exception('Could not locate stone definition for name "' . $name . '"');
+        }
+        return $this->stoneDefinitions[$name];
+    }
+    
+    /**
+     * Replaced by substrate_Context::stoneDefinition()
+     * @param $name
+     * @deprecated
+     */
+    public function getStoneDefinition($name) {
+        return $this->deprecated()->stoneDefinition($name);
+    }
+    
     /**
      * @see substrate_IContext::registeredStoneNames()
      * @override
@@ -214,7 +432,7 @@ class substrate_Context {
         if ( ! isset($this->anonymousStoneNameCounter) ) {
             $this->anonymousStoneNameCounter = 0;
         }
-        return '___anonymouseStone_context' . $this->id . '_stone' . $this->anonymousStoneNameCounter++;
+        return '___anonymousStone_context' . $this->id . '_stone' . $this->anonymousStoneNameCounter++;
     }
     
     /**
@@ -260,7 +478,6 @@ class substrate_Context {
         if ( ! isset($setup['lazyLoad']) ) $setup['lazyLoad'] = true;
         if ( ! isset($setup['className']) ) $setup['className'] = null;
         $this->stoneDefinitions[$name] = $setup;
-        print_r($setup);
         return new substrate_ContextStoneReference($name);
     }
 
@@ -273,6 +490,173 @@ class substrate_Context {
         $this->deprecated();
         $args = func_get_args();
         return call_user_func_array(array($this, 'add'), $args);
+    }
+    
+    /**
+     * Prepare a stone by name
+     * 
+     * Preparing a stone essentially traverses the parents to ensure that
+     * the stone's settings are correct.
+     * 
+     * @param $name
+     * @return array
+     */
+    protected function prepareStone($name) {
+        
+        $returnSetup = $thisStoneSetup = $this->stoneDefinitions[$name];
+        
+        if ( $thisStoneSetup['parent'] ) {
+            $returnSetup = $this->prepareStone($thisStoneSetup['parent']);
+        }
+        
+        foreach ( $thisStoneSetup as $param => $value ) {
+            if ( $param == 'properties' ) {
+                $returnSetup[$param] = array_merge($returnSetup[$param], $value);
+            } elseif ( $param == 'dependencies' ) {
+                $returnSetup[$param] = array_merge($returnSetup[$param], $value);
+            } elseif ( $param == 'constructorArgs' ) {
+                if ( $returnSetup['inheritConstructorArgs'] and $thisStoneSetup['parent']) {
+                    foreach ( $thisStoneSetup['constructorArgs'] as $constructorArg => $constructorValue ) {
+                        $returnSetup[$param][$constructorArg] = $constructorValue;
+                    }
+                } else {
+                    $returnSetup[$param] = $value;
+                }
+            } elseif ( $param == 'className' and $value === null) {
+                $returnSetup[$param] = $returnSetup[$param];
+            } else {
+                $returnSetup[$param] = $value;
+            }
+        }
+        
+        foreach ( array('constructorArgs', 'properties', 'dependencies') as $key ) {
+            foreach ( $returnSetup[$key] as $i => $value ) {
+                $returnSetup[$key][$i] = $this->replacePlaceholder($value);
+            }
+        }
+                
+        return $returnSetup;
+        
+    }
+    
+    /**
+     * Load dependant classes based on a specified setup
+     * @param $setup
+     */
+    protected function loadDependantClasses($setup) {
+        if ( $setup['parent'] ) {
+            $this->loadDependantClasses($this->stoneDefinitions[$setup['parent']]);
+        }
+        if ( array_key_exists('className', $setup) ) {
+            $this->loadClass($setup['className'], $setup['includeFilename']);
+        }
+    }
+    
+    /**
+     * Load a class
+     * @param $className
+     * @param $includeFilename
+     */
+    protected function loadClass($className, $includeFilename = null) {
+        if ( $className === null ) throw new Exception('Class name must be specified.');
+        if ( class_exists($className) ) return;
+        $this->classLoader->load($className, $includeFilename);
+    }
+
+    /**
+     * Add interface to interface cachemap
+     * @param $interfaceOrClass
+     * @param $name
+     */
+    protected function addInterfaceToMap($interfaceOrClass, $name) {
+        if ( ! isset($this->mapByInterface[$interfaceOrClass]) ) {
+            $this->mapByInterface[$interfaceOrClass] = array();
+        }
+        $this->mapByInterface[$interfaceOrClass][] = $name;
+    }
+    
+    /**
+     * Resolve a constructor arg
+     * @param $value
+     */
+    protected function resolvedConstructorArg($value = null) {
+        if ( is_object($value) and $value instanceof substrate_ContextStoneReference  ) {
+            return $this->get($value->name());
+        } elseif ( is_array($value) ) {
+            $newArray = array();
+            foreach ( $value as $i => $v ) {
+                $newArray[$i] = $this->resolvedConstructorArg($v);
+            }
+            return $newArray;
+        }
+        return $value;
+    }
+    
+    /**
+     * @see substrate_Context::resolvedConstructorArg()
+     * @deprecated
+     */
+    protected function getResolvedConstructorArg($value = null) {
+        return $this->deprecated()->resolvedConstructorArg($value);
+    }
+    
+    /**
+     * Replace a placeholder
+     * 
+     * This is called when the placeholder is potentially an object, a reference
+     * or a string.
+     * 
+     * @param $value
+     */
+    protected function replacePlaceholder($value) {
+        if ( is_object($value) and $value instanceof substrate_ContextStoneReference ) {
+            $value->setName($this->replacePlaceholderValue($value->name()));
+        } else if ( is_array($value) ) {
+            foreach ( $value as $i => $v ) {
+                $value[$i] = $this->replacePlaceholder($v);
+            }
+        } else if ( is_string($value) ) {
+            $value = $this->replacePlaceholderValue($value);
+        }
+        return $value;
+    }
+
+    /**
+     * Replace a placeholder value
+     * 
+     * This is called when the value is known to be a string.
+     * 
+     * @param string $value
+     */
+    protected function replacePlaceholderValue($value) {
+        if ( $this->placeholderConfigurer() === null ) {
+            // Just in case...
+            return $value;
+        } else {
+            return $this->placeholderConfigurer()->replacePlaceholders($value);
+        }
+    }
+    
+    /**
+     * The placeholder configurer (if defined)
+     * @return mixed
+     */
+    protected function placeholderConfigurer() {
+
+        if ( $this->exists('placeholderConfigurer') ) {
+            return $this->get('placeholderConfigurer');
+        }
+
+        return null;
+
+    }
+    
+    /**
+     * @see substrate_Context::placeholderConfigurer()
+     * @deprecated
+     */
+    protected function getPlaceholderConfigurer() {
+        return $this->deprecated()->placeholderConfigurer();
     }
     
     /**
