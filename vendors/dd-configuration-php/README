@@ -1,0 +1,11 @@
+Dragonfly Development PHP Configuration Library
+http://github.com/dflydev/dd-configuration-php
+
+
+dd-configuration provides a generic configuration interface enabling PHP
+developers to enjoy some of the benefits provided Java users by way of the
+Apache Commons Configuration library.
+
+
+Inspired by Apache Commons Configuration
+http://commons.apache.org/configuration/
