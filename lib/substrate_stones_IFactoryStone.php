@@ -1,5 +1,5 @@
 <?php
-interface substrate_objects_IFactoryObject {
+interface substrate_stones_IFactoryStone {
 
     /**
      * Get the object.
@@ -9,7 +9,7 @@ interface substrate_objects_IFactoryObject {
     
     /**
      * Get the object type
-     * @return string
+     * @return class
      */
     public function getObjectType();
     

@@ -11,7 +11,6 @@ require_once('substrate_stones_IContextAware.php');
 require_once('substrate_stones_IContextStartupAware.php');
 require_once('substrate_stones_IFactoryStone.php');
 
-
 /**
  * Context
  * @package substrate
@@ -113,7 +112,25 @@ class substrate_Context {
      * @var substrate_IClassLoader
      */
     protected $classLoader;
-
+    
+    /**
+     * Cache for log messages prior to logging being initialized
+     * @var array
+     */
+    protected $logMessages = array();
+    
+    /**
+     * Logger
+     * @var substrate_logging_ILogger
+     */
+    protected $logger = null;
+    
+    /**
+     * Logging has been initialized
+     * @var bool
+     */
+    protected $loggingInitialized = false;
+    
     /**
      * Constructor
      */
@@ -189,6 +206,7 @@ class substrate_Context {
      * Execute the Substrate context
      */
     public function execute() {
+        $this->initializeLogging();
         foreach ( $this->stoneDefinitions as $name => $setup ) {
             $stoneDefinition = $this->prepareStone($name);
             $this->stoneDefinitions[$name] = $stoneDefinition;
@@ -319,11 +337,11 @@ class substrate_Context {
         }
 
         if ( $newInstance instanceof substrate_stones_IFactoryStone ) {
-            $newInstance = $newInstance->getStone();
+            $newInstance = $newInstance->getObject();
         }
 
         $this->stoneInstances[$name] = $newInstance;
-
+        
         if ( count($references) ) {
             // If there are references, we can try to load them now.
             // We do this AFTER we have stored our stone reference
@@ -331,15 +349,19 @@ class substrate_Context {
             // have a dependency on each other.
             $this->loadReferences($name, $references);
         }
-
-        $this->addInterfacetoMap(get_class($newInstance), $name);
-
-        foreach ( class_implements($newInstance) as $implementedInterface ) {
-            $this->addInterfaceToMap($implementedInterface, $name);
-        }
-
-        foreach ( class_parents($newInstance) as $parentClass ) {
-            $this->addInterfaceToMap($parentClass, $name);
+        
+        if ( $newInstance !== null ) {
+            
+            $this->addInterfacetoMap(get_class($newInstance), $name);
+    
+            foreach ( class_implements($newInstance) as $implementedInterface ) {
+                $this->addInterfaceToMap($implementedInterface, $name);
+            }
+    
+            foreach ( class_parents($newInstance) as $parentClass ) {
+                $this->addInterfaceToMap($parentClass, $name);
+            }
+            
         }
         
         return $newInstance;
@@ -696,12 +718,40 @@ class substrate_Context {
     }
     
     /**
+     * Initialize logging
+     */
+    protected function initializeLogging() {
+        if ( ! $this->loggingInitialized ) {
+            $this->loggingInitialized = true;
+            if ( $this->exists('logFactory') ) {
+                $this->logger = $this->get('logFactory')->get();
+            } elseif ( $this->exists('logger') ) {
+                $this->logger = $this->get('logger');
+            }
+            if ( $this->logger !== null ) {
+                foreach ( $this->logMessages as $message ) {
+                    $this->log($message[0], $message[1]);
+                }
+                $this->logMessages = null;
+                set_error_handler(array($this->logger, 'handleError'));
+                set_exception_handler(array($this->logger, 'handleException'));
+            }
+        }
+    }
+    
+    /**
      * Log
      * @param string $type
      * @param string $message
      */
     private function log($type, $message = null) {
-        printf("%s: %s\n", strtoupper($type), $message === null ? '--NULL--' : $message);
+        if ( $this->loggingInitialized ) {
+            if ( $this->logger !== null ) {
+                $this->logger->$type($message);
+            }
+        } else {
+            $this->logMessages[] = array($type, $message);
+        }
     }
 
     /**

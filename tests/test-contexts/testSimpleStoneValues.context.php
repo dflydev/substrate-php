@@ -1,14 +1,13 @@
 <?php
-
 $context->add('jon', array(
-	'className' => 'tests_Person',
+    'className' => 'tests_Person',
     'constructorArgs' => array(
         'name' => 'Jon',
     ),
 ));
 
 $context->add('jane', array(
-	'className' => 'tests_Person',
+    'className' => 'tests_Person',
     'properties' => array(
         'name' => 'Jane',
     ),
@@ -35,7 +34,7 @@ $context->add('jonAndJaneMixed', array(
     'constructorArgs' => array(
         'leader' => $context->ref('jon'),
     ),
-	'properties' => array(
+    'properties' => array(
         'follower' => $context->ref('jane'),
     ),
 ));
@@ -49,7 +48,7 @@ $context->add('bobAndBill', array(
         )),
     ),
     'properties' => array(
-    	'leader' => $context->add(array(
+        'leader' => $context->add(array(
             'className' => 'tests_Person',
             'properties' => array('name' => '${person.bob.name}'),
         )),
