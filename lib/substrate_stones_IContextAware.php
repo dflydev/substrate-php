@@ -1,6 +1,6 @@
 <?php
 require_once('substrate_Context.php');
-interface substrate_IContextAware {
+interface substrate_stones_IContextAware {
     /**
      * Stone is aware of the Substrate context
      * @param $context

@@ -387,7 +387,7 @@ class substrate_Context {
             $object->informAboutContext($this);
         }
         
-        if ( $object instanceof substrate_IContextStartupAware ) {
+        if ( $object instanceof substrate_stones_IContextStartupAware ) {
             $object->informAboutContextStartup($this);
         }
         
