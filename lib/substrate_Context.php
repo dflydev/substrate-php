@@ -684,7 +684,11 @@ class substrate_Context {
         foreach ( $references as $reference ) {
             $methodName = $reference['methodName'];
             $contextStoneReference = $reference['contextStoneReference'];
-            $referencedStone = $this->get($contextStoneReference->name());
+            if ( $contextStoneReference instanceof substrate_ContextStoneReference ) {
+                $referencedStone = $this->get($contextStoneReference->name());
+            } else {
+                $referencedStone = $this->get($contextStoneReference);
+            }
             if ( $methodName !== null ) {
                 $stone->$methodName($referencedStone);
             }
