@@ -377,6 +377,9 @@ class substrate_Context {
     public function get($name= null) {
         
         if ( $name === null ) throw new Exception('Object name must be specified.');
+        if ( $name instanceof substrate_ContextStoneReference ) {
+            $name = $name->name();
+        }
         if ( $this->initialized($name) ) return $this->stoneInstances[$name];
         
         $this->initializedStones[$name] = true;
