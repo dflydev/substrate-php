@@ -73,6 +73,11 @@ class substrate_PathResourceLocator implements substrate_IResourceLocator {
      */
     public function find($target, $realPath = false) {
 
+        if ( strpos($target, '/') === 0 ) {
+            if ( file_exists($target) ) return $realPath ? realpath($target) : $target;
+            return null;
+        }
+        
         foreach ( $this->allPaths() as $path ) {
             $testLocation = $path . '/' . $target;
             // TODO This could possibly be cached eventually.

@@ -283,7 +283,12 @@ class substrate_Context {
                             if ( $testStone instanceof $paramClassName ) {
                                 $throwException = false;
                                 $foundArgument = true;
-                                $constructorArgs[] = $testStone;
+                                if ( ! $reflectionParamter->allowsNull() ) {
+                                    // TODO: We should have some sort of auto wiring
+                                    // kill switch. This "only if not null" might be
+                                    // a bit hard to track down.
+                                    $constructorArgs[] = $testStone;
+                                }
                                 break;
                             }
                         }
