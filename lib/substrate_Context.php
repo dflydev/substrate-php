@@ -513,12 +513,12 @@ class substrate_Context {
     }
 
     /**
-     * Setup a stone in the context
+     * Set a stone in the context
+     * 
+     * Alias for substrate_Context::add()
      * @see substrate_Context::add()
-     * @deprecated
      */
     public function set() {
-        $this->deprecated();
         $args = func_get_args();
         return call_user_func_array(array($this, 'add'), $args);
     }
