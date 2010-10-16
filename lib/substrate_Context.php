@@ -94,6 +94,17 @@ class substrate_Context {
      * @var array
      */
     protected $initializedStones = array();
+
+    /**
+     * Cache of prepared stones
+     * 
+     * Used to keep track of which stones have been properly prepared.
+     * It used to be only stones that were instantiated post-execute
+     * would be prepared properly. No early gotten stones (via. get())
+     * will also be prepared properly.
+     * @var unknown_type
+     */
+    protected $preparedStones = array();
     
     /**
      * Context ID
@@ -201,15 +212,20 @@ class substrate_Context {
         }
         
     }
-    
+
     /**
      * Execute the Substrate context
      */
     public function execute() {
         $this->initializeLogging();
+        $this->placeholderConfigurer();
         foreach ( $this->stoneDefinitions as $name => $setup ) {
-            $stoneDefinition = $this->prepareStone($name);
-            $this->stoneDefinitions[$name] = $stoneDefinition;
+            if ( ! isset($this->preparedStones[$name]) ) {
+                // TODO: This is not DRY. See get()
+                $stoneDefinition = $this->prepareStone($name);
+                $this->stoneDefinitions[$name] = $stoneDefinition;
+                $this->preparedStones[$name] = true;
+            }
             if ( ! $stoneDefinition['lazyLoad'] ) {
                 $this->instantiate($name);
             }
@@ -371,7 +387,6 @@ class substrate_Context {
         
         return $newInstance;
             
-            
     }
     
     /**
@@ -385,10 +400,21 @@ class substrate_Context {
         if ( $name instanceof substrate_ContextStoneReference ) {
             $name = $name->name();
         }
-        if ( $this->initialized($name) ) return $this->stoneInstances[$name];
+
+        if ( $this->initialized($name) ) {
+            return isset($this->stoneInstances[$name]) ? $this->stoneInstances[$name] : null;
+        }
         
         $this->initializedStones[$name] = true;
+        
+        if ( ! isset($this->preparedStones[$name]) ) {
+            // TODO: This is not DRY. See execute()
+            $stoneDefinition = $this->prepareStone($name);
+            $this->stoneDefinitions[$name] = $stoneDefinition;
+            $this->preparedStones[$name] = true;
+        }
 
+        
         $object = $this->instantiate($name);
         
         if ( $object instanceof substrate_stones_IContextAware ) {
@@ -660,12 +686,10 @@ class substrate_Context {
      * @param string $value
      */
     protected function replacePlaceholderValue($value) {
-        if ( $this->placeholderConfigurer() === null ) {
-            // Just in case...
-            return $value;
-        } else {
-            return $this->placeholderConfigurer()->replacePlaceholders($value);
+        if ( $this->placeholderConfigurer() !== null ) {
+            $value = $this->placeholderConfigurer()->replacePlaceholders($value);
         }
+        return $value;
     }
     
     /**
@@ -677,7 +701,7 @@ class substrate_Context {
         if ( $this->exists('placeholderConfigurer') ) {
             return $this->get('placeholderConfigurer');
         }
-
+        
         return null;
 
     }
