@@ -11,7 +11,8 @@ require_once('PHPUnit/Framework.php');
 
 class AllTests {
     public static $testClassNames = array(
-        'SubstrateBasicTest'
+        'SubstrateBasicTest',
+        'SubstrateUtilPathMatcherTest',
     );
     public static function suite() {
         $suite = new PHPUnit_Framework_TestSuite('Substrate');
