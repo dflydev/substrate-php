@@ -358,6 +358,7 @@ class substrate_Context {
         }
 
         if ( $newInstance instanceof substrate_stones_IFactoryStone ) {
+            // TODO Make new instance factory stone aware?
             $newInstance = $newInstance->getObject();
         }
 
@@ -416,6 +417,8 @@ class substrate_Context {
 
         
         $object = $this->instantiate($name);
+        
+        // TODO The following should probably be moved to instantiate.
         
         if ( $object instanceof substrate_stones_IContextAware ) {
             $object->informAboutContext($this);
