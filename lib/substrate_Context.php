@@ -226,7 +226,7 @@ class substrate_Context {
                 $this->stoneDefinitions[$name] = $stoneDefinition;
                 $this->preparedStones[$name] = true;
             }
-            if ( ! $stoneDefinition['lazyLoad'] ) {
+            if ( ! $this->stoneDefinitions[$name]['lazyLoad'] ) {
                 $this->instantiate($name);
             }
         }
