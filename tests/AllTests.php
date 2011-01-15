@@ -1,10 +1,10 @@
 <?php
 
 $classpath = explode(PATH_SEPARATOR, get_include_path());
-$classpath[] = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'test-libs';
-$classpath[] = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'test-contexts';
-$classpath[] = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'test-configs';
-require_once('bootstrap.php');
+$classpath[] = dirname(__FILE__) . '/test-libs';
+$classpath[] = dirname(__FILE__) . '/test-contexts';
+$classpath[] = dirname(__FILE__) . '/test-configs';
+require_once(dirname(__FILE__) . '/bootstrap.php');
 set_include_path(implode(PATH_SEPARATOR, $classpath));
 
 require_once('PHPUnit/Framework.php');

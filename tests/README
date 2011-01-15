@@ -1,10 +1,11 @@
 Testing with PHPUnit (http://www.phpunit.de/)
 
-From the tests/ directory:
+To run an individual test:
 
-    phpunit AllTests
+    phpunit SpecificTest.php
 
-From any other directory:
+To run all tests it is best to execute the Phing build script
+which has the appropriate filters setup to ensure that only
+the tests that need to be run will be run.
 
-    phpunit AllTests /path/to/AllTests.php
-    phpunit AllTests tests/AllTests.php
+    phing test

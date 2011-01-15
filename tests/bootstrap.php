@@ -24,4 +24,3 @@ if ( $dirHandle = opendir($relativeVendors) ) {
 
 if ( file_exists($testRoot . '/bootstrap-site-post.php') ) require_once($testRoot . '/bootstrap-site-post.php');
 
-?>

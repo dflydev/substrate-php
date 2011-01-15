@@ -1,6 +1,17 @@
 <?php
+
+define('PACKAGE_LIB', dirname(dirname(__FILE__)) . '/lib/');
+$classpath = explode(PATH_SEPARATOR, get_include_path());
+array_unshift($classpath, PACKAGE_LIB);
+$classpath[] = dirname(__FILE__) . '/test-libs';
+$classpath[] = dirname(__FILE__) . '/test-contexts';
+$classpath[] = dirname(__FILE__) . '/test-configs';
+require_once(dirname(__FILE__) . '/bootstrap.php');
+set_include_path(implode(PATH_SEPARATOR, $classpath));
+
 require_once('PHPUnit/Framework.php');
 require_once('substrate_Context.php');
+
 class SubstrateBasicTest extends PHPUnit_Framework_TestCase {
 
     /**
