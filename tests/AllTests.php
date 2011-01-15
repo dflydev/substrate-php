@@ -1,6 +1,14 @@
 <?php
 
+//
 // Left for legacy
+//
+// Correct way to run tests now is to issue
+//
+//   phing test
+//
+// from the project root.
+//
 
 $classpath = explode(PATH_SEPARATOR, get_include_path());
 $classpath[] = dirname(__FILE__) . '/test-libs';
