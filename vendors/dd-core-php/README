@@ -1,0 +1,7 @@
+Dragonfly Development PHP Core Library
+http://redmine.dflydev.com/projects/dd-core
+
+
+dd-core provides some basic bootstrapping functionality such as resource
+locating (finding files on disk) and class loading.
+
