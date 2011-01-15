@@ -1,5 +1,7 @@
 <?php
 
+// Left for legacy
+
 $classpath = explode(PATH_SEPARATOR, get_include_path());
 $classpath[] = dirname(__FILE__) . '/test-libs';
 $classpath[] = dirname(__FILE__) . '/test-contexts';
