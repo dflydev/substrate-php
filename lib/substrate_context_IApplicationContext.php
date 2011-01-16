@@ -1,5 +1,7 @@
 <?php
 
+require_once('substrate_stones_factory_IStoneFactory.php');
+
 /**
  * Central interface to provide configuration for an application.
  * 
